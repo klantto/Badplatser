@@ -1,0 +1,2 @@
+# Badplatser
+Badplatser i Göteborg
