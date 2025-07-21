@@ -19,7 +19,7 @@ const fetch = require("node-fetch");
   ];
 
   // 1. Hämta alla badplatser från Hav
-  const bathingsRes = await fetch(`https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters`);
+  const bathingsRes = await fetch(`https://gw.havochvatten.se/external-public/bathing-waters/v2`);
   const bathings = await bathingsRes.json();
 
   // 2. Filtrera till de i VGR
@@ -33,7 +33,7 @@ const fetch = require("node-fetch");
     if (!lat || !lon) continue;
 
     // Hämta vattenprover för denna plats
-    const measurementsRes = await fetch(`https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters/${bw.id}/measurements`);
+    const measurementsRes = await fetch(`https://gw.havochvatten.se/external-public/bathing-waters/v2/${bw.id}/measurements`);
     const waterData = await measurementsRes.json();
 
     // Hämta lufttemperatur från SMHI punktdata (via närmaste mätstation – här förenklat till Göteborgs station)
