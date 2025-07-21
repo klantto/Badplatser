@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <title>Badplats: Surtesjön</title>
+</head>
+<body>
+  <h1>Badplatsinformation: Surtesjön</h1>
+  <div id="info"></div>
+  <script>
+    const id = "SE0A21440000006580";
+    const baseUrl = "https://gw.havochvatten.se/external-public/bathing-waters/v2";
+
+    async function fetchSurtesjonData() {
+      const profileResp = await fetch(`${baseUrl}/bathing-waters/${id}/profiles`);
+      const resultsResp = await fetch(`${baseUrl}/bathing-waters/${id}/results`);
+      const forecastResp = await fetch(`${baseUrl}/forecasts?bathingWaterId=${id}`);
+
+      const profile = await profileResp.json();
+      const results = await resultsResp.json();
+      const forecast = await forecastResp.json();
+
+      const latestResult = results.results?.[0] ?? {};
+      const forecastToday = forecast.forecasts?.[0]?.waterForecasts ?? [];
+
+      const html = `
+        <p><strong>Badplats:</strong> ${profile.bathingWater.name}</p>
+        <p><strong>Kommun:</strong> ${profile.bathingWater.municipality.name}</p>
+        <p><strong>Badsäsong:</strong> ${profile.bathingSeason.startsAt?.slice(0,10)} – ${profile.bathingSeason.endsAt?.slice(0,10)}</p>
+        <p><strong>Senaste vattentemp:</strong> ${latestResult.waterTemp ?? "Ingen"} °C (${latestResult.takenAt?.slice(0,10) ?? "okänt"})</p>
+        <p><strong>Prognoser idag:</strong> ${
+          forecastToday.length > 0
+            ? forecastToday.map(f => `${f.measHour}:00 – ${f.waterTemp}°C`).join(", ")
+            : "Ingen prognos tillgänglig"
+        }</p>
+      `;
+      document.getElementById("info").innerHTML = html;
+    }
+
+    fetchSurtesjonData();
+  </script>
+</body>
+</html>
