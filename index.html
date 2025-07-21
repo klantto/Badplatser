@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h1>Alla Badplatser i Göteborg</h1>
+  <h1>Alla Badplatser i Göteborg (Sjöar och Kust)</h1>
   <div id="container">Laddar badplatser...</div>
 
   <script>
@@ -34,18 +34,31 @@
       for (const forecast of forecasts) {
         const id = forecast.bathingWaterId;
         try {
-          const profileRes = await fetch(`${baseUrl}/bathing-waters/${id}/profiles`);
+          const [profileRes, resultRes] = await Promise.all([
+            fetch(`${baseUrl}/bathing-waters/${id}/profiles`),
+            fetch(`${baseUrl}/bathing-waters/${id}/results`)
+          ]);
+
           const profile = await profileRes.json();
+          const results = await resultRes.json();
+
           const name = profile.bathingWater.name;
           const desc = profile.bathingWater.description;
+          const waterType = profile.bathingWater.waterTypeIdText;
           const tempData = forecast.waterForecasts.map(f => `${f.measHour}:00 / ${f.waterTemp}°C`).join(", ");
+
+          const latestResult = results.results && results.results.length > 0 ? results.results[0] : null;
+          const waterTemp = latestResult ? `${latestResult.waterTemp} °C` : "Det finns inget vattenprov";
+          const sampleDate = latestResult ? latestResult.takenAt.slice(0, 10) : "";
 
           const div = document.createElement("div");
           div.className = "badplats";
           div.innerHTML = `
             <h2>${name}</h2>
+            <p><strong>Typ:</strong> ${waterType}</p>
             <p>${desc}</p>
             <p><strong>Prognos temperatur idag:</strong> ${tempData}</p>
+            <p><strong>Senaste vattenprov:</strong> ${waterTemp} ${sampleDate ? `(datum: ${sampleDate})` : ""}</p>
           `;
           container.appendChild(div);
         } catch (err) {
