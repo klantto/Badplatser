@@ -11,6 +11,9 @@
     th, td { border: 1px solid #ccc; padding: 0.5em; text-align: center; }
     th { background-color: #e0f0ff; }
     canvas { margin-top: 2em; }
+    #monthlyAvgTable { margin-top: 2em; }
+    .hot::after { content: " \1F525"; } /* Eld */
+    .cold::after { content: " \2744"; } /* Snöflinga */
   </style>
 </head>
 <body>
@@ -34,10 +37,23 @@
 
   <canvas id="tempChart" width="800" height="400"></canvas>
 
+  <h2>Medeltemperatur per månad</h2>
+  <table id="monthlyAvgTable">
+    <thead>
+      <tr>
+        <th>Månad</th>
+        <th>Medel lufttemp (°C)</th>
+        <th>Medel vattentemp (°C)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
   <script>
     let allData = [];
     const tbody = document.querySelector("#tempTable tbody");
     const locationFilter = document.getElementById("locationFilter");
+    const monthlyAvgBody = document.querySelector("#monthlyAvgTable tbody");
 
     async function loadTemperaturData() {
       const res = await fetch('combined_2025.json');
@@ -57,16 +73,23 @@
 
       filtered.forEach(entry => {
         const row = document.createElement("tr");
+        const airTemp = entry.air !== null ? entry.air.toFixed(1) : "-";
+        const waterTemp = entry.water !== null ? entry.water.toFixed(1) : "-";
+
+        const airClass = entry.air !== null ? (entry.air > 23 ? "hot" : entry.air < 15 ? "cold" : "") : "";
+        const waterClass = entry.water !== null ? (entry.water > 23 ? "hot" : entry.water < 15 ? "cold" : "") : "";
+
         row.innerHTML = `
           <td>${entry.date}</td>
           <td>${entry.location}</td>
-          <td>${entry.air !== null ? entry.air.toFixed(1) : "-"}</td>
-          <td>${entry.water !== null ? entry.water.toFixed(1) : "-"}</td>
+          <td class="${airClass}">${airTemp}</td>
+          <td class="${waterClass}">${waterTemp}</td>
         `;
         tbody.appendChild(row);
       });
 
       drawChart(filtered);
+      drawMonthlyAverages(filtered);
     }
 
     function drawChart(data) {
@@ -108,6 +131,31 @@
             }
           }
         }
+      });
+    }
+
+    function drawMonthlyAverages(data) {
+      const months = {};
+
+      data.forEach(entry => {
+        const month = entry.date.slice(0, 7); // YYYY-MM
+        if (!months[month]) months[month] = { air: [], water: [] };
+        if (entry.air !== null) months[month].air.push(entry.air);
+        if (entry.water !== null) months[month].water.push(entry.water);
+      });
+
+      monthlyAvgBody.innerHTML = "";
+      Object.entries(months).forEach(([month, values]) => {
+        const avgAir = values.air.length ? (values.air.reduce((a, b) => a + b) / values.air.length).toFixed(1) : "-";
+        const avgWater = values.water.length ? (values.water.reduce((a, b) => a + b) / values.water.length).toFixed(1) : "-";
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${month}</td>
+          <td>${avgAir}</td>
+          <td>${avgWater}</td>
+        `;
+        monthlyAvgBody.appendChild(row);
       });
     }
 
