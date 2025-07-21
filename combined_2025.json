@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <title>Luft- och Vattentemperatur 2025</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2em; background: #f0f8ff; }
+    h1 { color: #004080; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: center; }
+    th { background-color: #e0f0ff; }
+    canvas { margin-top: 2em; }
+  </style>
+</head>
+<body>
+  <h1>Luft- och Vattentemperatur per dag – 2025</h1>
+  <p>Data uppdateras dagligen via GitHub Actions.</p>
+
+  <label for="locationFilter">Filtrera plats:</label>
+  <select id="locationFilter"></select>
+
+  <table id="tempTable">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Plats</th>
+        <th>Lufttemp (°C)</th>
+        <th>Vattentemp (°C)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <canvas id="tempChart" width="800" height="400"></canvas>
+
+  <script>
+    let allData = [];
+    const tbody = document.querySelector("#tempTable tbody");
+    const locationFilter = document.getElementById("locationFilter");
+
+    async function loadTemperaturData() {
+      const res = await fetch('combined_2025.json');
+      const data = await res.json();
+      allData = data;
+
+      const uniqueLocations = [...new Set(data.map(d => d.location))];
+      locationFilter.innerHTML = uniqueLocations.map(loc => `<option value="${loc}">${loc}</option>`).join("");
+
+      locationFilter.addEventListener("change", () => updateView(locationFilter.value));
+      updateView(uniqueLocations[0]);
+    }
+
+    function updateView(selectedLocation) {
+      tbody.innerHTML = "";
+      const filtered = allData.filter(entry => entry.location === selectedLocation);
+
+      filtered.forEach(entry => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.location}</td>
+          <td>${entry.air !== null ? entry.air.toFixed(1) : "-"}</td>
+          <td>${entry.water !== null ? entry.water.toFixed(1) : "-"}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      drawChart(filtered);
+    }
+
+    function drawChart(data) {
+      const ctx = document.getElementById('tempChart').getContext('2d');
+      const labels = data.map(e => e.date);
+      const airTemps = data.map(e => e.air);
+      const waterTemps = data.map(e => e.water);
+
+      if (window.tempChart) window.tempChart.destroy();
+
+      window.tempChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Lufttemperatur',
+              data: airTemps,
+              borderColor: 'rgba(255,99,132,1)',
+              fill: false
+            },
+            {
+              label: 'Vattentemperatur',
+              data: waterTemps,
+              borderColor: 'rgba(54,162,235,1)',
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: 'Temperatur per dag – 2025'
+            }
+          }
+        }
+      });
+    }
+
+    loadTemperaturData();
+  </script>
+</body>
+</html>
