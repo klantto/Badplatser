@@ -1,0 +1,32 @@
+name: Uppdatera temperaturdata dagligen
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Varje natt kl 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Klona repo
+        uses: actions/checkout@v3
+
+      - name: Sätt upp Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Installera beroenden
+        run: npm install node-fetch
+
+      - name: Skapa kombinerad temperaturdata
+        run: node combine.js
+
+      - name: Spara uppdaterad data i repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add combined_2025.json
+          git commit -m "Uppdaterad temperaturdata `date +'%Y-%m-%d'`" || echo "Inga ändringar"
+          git push
