@@ -54,7 +54,7 @@
               const name = profile.bathingWater.name;
               const desc = profile.bathingWater.description;
               const waterType = profile.bathingWater.waterTypeIdText;
-              const tempData = forecast.waterForecasts.map(f => `${f.measHour}:00 – ${f.waterTemp} °C`).join(", ");
+              const tempData = forecast.waterForecasts.map(f => `${f.measHour}:00 / ${f.waterTemp} °C`).join(", ");
 
               const latestResult = results.results && results.results.length > 0 ? results.results[0] : null;
               const waterTemp = latestResult ? `${latestResult.waterTemp} °C` : "Det finns inget vattenprov";
