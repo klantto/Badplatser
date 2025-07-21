@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <title>Sjöbad i Västra Götalandsregionen</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; background: #eef6ff; }
+    h1 { color: #003366; }
+    .badplats {
+      border: 1px solid #ccc;
+      background: #fff;
+      padding: 1em;
+      margin-bottom: 1em;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sjöbad i Västra Götalandsregionen</h1>
+  <div id="container">Laddar sjöar...</div>
+
+  <script>
+    const baseUrl = "https://gw.havochvatten.se/external-public/bathing-waters/v2";
+    const regionKommuner = [
+      "Ale", "Alingsås", "Bollebygd", "Borås", "Falköping", "Kungälv", "Lerum", "Lidköping", "Mölndal",
+      "Partille", "Skövde", "Stenungsund", "Tibro", "Tidaholm", "Trollhättan", "Uddevalla", "Vänersborg",
+      "Vårgårda", "Göteborg"
+    ];
+
+    async function fetchBadplatser() {
+      const container = document.getElementById("container");
+      container.innerHTML = "";
+
+      for (const kommun of regionKommuner) {
+        try {
+          const res = await fetch(`${baseUrl}/forecasts?municName=${encodeURIComponent(kommun)}`);
+          const data = await res.json();
+          const forecasts = data.forecasts || [];
+
+          for (const forecast of forecasts) {
+            const id = forecast.bathingWaterId;
+            try {
+              const [profileRes, resultRes] = await Promise.all([
+                fetch(`${baseUrl}/bathing-waters/${id}/profiles`),
+                fetch(`${baseUrl}/bathing-waters/${id}/results`)
+              ]);
+
+              const profile = await profileRes.json();
+              const results = await resultRes.json();
+
+              // Visa endast sjöar
+              if (profile.bathingWater.waterTypeIdText !== "Sjö") continue;
+
+              const name = profile.bathingWater.name;
+              const desc = profile.bathingWater.description;
+              const waterType = profile.bathingWater.waterTypeIdText;
+              const tempData = forecast.waterForecasts.map(f => `${f.measHour}:00 – ${f.waterTemp} °C`).join(", ");
+
+              const latestResult = results.results && results.results.length > 0 ? results.results[0] : null;
+              const waterTemp = latestResult ? `${latestResult.waterTemp} °C` : "Det finns inget vattenprov";
+              const sampleDate = latestResult ? latestResult.takenAt.slice(0, 10) : "";
+
+              const div = document.createElement("div");
+              div.className = "badplats";
+              div.innerHTML = `
+                <h2>${name}</h2>
+                <p><strong>Kommun:</strong> ${kommun}</p>
+                <p>${desc}</p>
+                <p><strong>Prognos temperatur idag:</strong> ${tempData}</p>
+                <p><strong>Senaste vattenprov:</strong> ${waterTemp} ${sampleDate ? `(datum: ${sampleDate})` : ""}</p>
+              `;
+              container.appendChild(div);
+            } catch (err) {
+              console.warn("Kunde inte hämta data för badplats-ID:", id);
+            }
+          }
+        } catch (err) {
+          console.error("Fel vid hämtning för kommun:", kommun);
+        }
+      }
+    }
+
+    fetchBadplatser();
+  </script>
+</body>
+</html>
