@@ -2,7 +2,7 @@ name: Uppdatera temperaturdata dagligen
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Varje natt kl 02:00 UTC
+    - cron: '0 7 * * *'  # Varje natt kl 07:00 UTC
   workflow_dispatch:
 
 jobs:
