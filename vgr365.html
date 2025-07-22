@@ -1,141 +1,85 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="utf-8">
-  <title>Utvalda badplatser i Göteborgs stad</title>
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet/dist/leaflet.css"
-  />
+  <meta charset="UTF-8">
+  <title>Badplatser i Göteborg – Testmiljö</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 1rem;
-      background: #f9f9f9;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 0.5rem;
-    }
-    #map {
-      height: 350px;
-      margin: 1rem 0;
+    body { font-family: sans-serif; padding: 2em; background: #f0f8ff; }
+    h1 { color: #004080; }
+    .badplats {
       border: 1px solid #ccc;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 2rem;
-    }
-    th, td {
-      border: 1px solid #bbb;
-      padding: 0.5rem;
-      text-align: left;
-    }
-    th {
-      background: #eee;
-    }
-    .error {
-      color: red;
-      text-align: center;
+      background: #fff;
+      padding: 1em;
+      margin-bottom: 1em;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <h1>Utvalda badplatser i Göteborgs stad</h1>
-  <p id="error" class="error"></p>
+  <h1>Badplatser i Göteborgs kommun (Testmiljö)</h1>
+  <div id="container">Laddar badplatser...</div>
 
-  <!-- Karta -->
-  <div id="map"></div>
-
-  <!-- Tabell -->
-  <table id="bathingTable">
-    <thead>
-      <tr>
-        <th>Namn</th>
-        <th>ID</th>
-        <th>Temperatur (°C)</th>
-        <th>Vattenkvalitet</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Produktion-API för badvatten
-    const apiBase = 'https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters';
-    const params = new URLSearchParams({ municipalityName: 'Göteborg' });
+    const baseUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://gwtest.havochvatten.se/external-test/bathing-waters/v2');
 
-    // De exakta namn vi vill plocka ut
-    const selectedNames = ['Surtesjön', 'Stora Delsjön', 'Saltholmen'];
+    const utvaldaNamn = [
+      'Askimsbadet',
+      'Saltholmen',
+      'Delsjön',
+      'Härlanda tjärn',
+      'Hovåsbadet'
+    ];
 
-    // Initiera Leaflet‑kartan centrerad på Göteborg
-    const map = L.map('map').setView([57.7089, 11.9746], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    async function fetchBadplatser() {
+      const container = document.getElementById('container');
+      container.innerHTML = 'Hämtar badplatser...';
 
-    async function loadAndDisplay() {
       try {
-        const resp = await fetch(`${apiBase}?${params}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const json = await resp.json();
-        const sites = json.items || [];
+        const res = await fetch(baseUrl + '/bathing-waters?countyName=Västra Götalands län');
+        const data = await res.json();
 
-        // Filtrera ut de valda badplatserna
-        const selectedSites = sites.filter(site =>
-          selectedNames.includes(site.name)
-        );
+        const badplatser = data.bathingWaters
+          .filter(bw => bw.municipality.name === 'Göteborg' && utvaldaNamn.includes(bw.name));
 
-        if (selectedSites.length === 0) {
-          document.getElementById('error').textContent =
-            'Hittade inga av de utvalda badplatserna.';
-          return;
+        container.innerHTML = '';
+
+        for (const bw of badplatser) {
+          const profileUrl = baseUrl + `/bathing-waters/${bw.id}/profiles`;
+          let tempText = '<em>Ingen temperaturdata tillgänglig</em>';
+
+          try {
+            const profileRes = await fetch(profileUrl);
+            const profileData = await profileRes.json();
+            const temp = profileData.bathingWater.waterTemp;
+            if (temp !== undefined) {
+              tempText = `${temp} °C`;
+            }
+          } catch (e) {
+            console.warn(`Kunde inte hämta temperatur för ${bw.name}`);
+          }
+
+          const div = document.createElement('div');
+          div.className = 'badplats';
+          div.innerHTML = `
+            <h2>${bw.name}</h2>
+            <p><strong>Kommun:</strong> ${bw.municipality.name}</p>
+            <p><strong>Koordinater:</strong> ${bw.samplingPointPosition.latitude}, ${bw.samplingPointPosition.longitude}</p>
+            <p><strong>Senast ändrad:</strong> ${bw.modified}</p>
+            <p><strong>Vattentemperatur:</strong> ${tempText}</p>
+          `;
+          container.appendChild(div);
         }
 
-        const tbody = document.querySelector('#bathingTable tbody');
-
-        selectedSites.forEach(site => {
-          // Temperatur och kvalitet
-          const temp = site.waterTemperature != null
-            ? site.waterTemperature.toFixed(1)
-            : '–';
-          const kval = site.classification?.name || 'Okänd';
-
-          // Lägg in i tabellen
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${site.name}</td>
-            <td>${site.id}</td>
-            <td>${temp}</td>
-            <td>${kval}</td>
-          `;
-          tbody.appendChild(tr);
-
-          // Markör på kartan (om koordinater finns)
-          if (site.latitude && site.longitude) {
-            L.marker([site.latitude, site.longitude])
-              .addTo(map)
-              .bindPopup(
-                `<strong>${site.name}</strong><br>
-                 ID: ${site.id}<br>
-                 Temp: ${temp} °C<br>
-                 Kvalitet: ${kval}`
-              );
-          }
-        });
-
-      } catch (err) {
-        console.error(err);
-        document.getElementById('error').textContent =
-          'Misslyckades med att ladda badplatsdata.';
+        if (badplatser.length === 0) {
+          container.innerHTML = '<p>Inga badplatser hittades för Göteborgs kommun.</p>';
+        }
+      } catch (error) {
+        console.error('Fel vid hämtning av data:', error);
+        container.innerHTML = '<p>Misslyckades att hämta data.</p>';
       }
     }
 
-    window.addEventListener('DOMContentLoaded', loadAndDisplay);
+    fetchBadplatser();
   </script>
 </body>
 </html>
