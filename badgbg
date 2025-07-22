@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>Badplatser i Göteborg</title>
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 1rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    #map {
+      height: 400px;
+      margin: 1rem 0;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    th, td {
+      border: 1px solid #bbb;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    th {
+      background: #eee;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Badplatser i Göteborg</h1>
+  <p id="error" class="error"></p>
+  <div id="map"></div>
+  <table id="bathingTable">
+    <thead>
+      <tr>
+        <th>Namn</th>
+        <th>Temperatur (°C)</th>
+        <th>Vattenkvalitet</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // API‑endpoint för badvatten i Göteborgs län
+    const apiUrl = 'https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=g%C3%B6teborg';
+
+    // Initiera Leaflet‑karta centrerad på Göteborg
+    const map = L.map('map').setView([57.7089, 11.9746], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Hämta data och bygg upp tabell + markörer
+    async function loadBathingData() {
+      try {
+        const resp = await fetch(apiUrl);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const sites = await resp.json();
+        displayData(sites);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('error').textContent = 'Misslyckades med att hämta data.';
+      }
+    }
+
+    function displayData(sites) {
+      const tbody = document.querySelector('#bathingTable tbody');
+      sites.forEach(site => {
+        // Skapa tabellrad
+        const tr = document.createElement('tr');
+        const temp = site.waterTemperature != null 
+          ? site.waterTemperature.toFixed(1) 
+          : '–';
+        const kval = site.classification && site.classification.name 
+          ? site.classification.name 
+          : 'Okänd';
+        tr.innerHTML = `
+          <td>${site.name}</td>
+          <td>${temp}</td>
+          <td>${kval}</td>
+        `;
+        tbody.appendChild(tr);
+
+        // Lägg till markör på kartan om koordinater finns
+        if (site.latitude && site.longitude) {
+          L.marker([site.latitude, site.longitude])
+            .addTo(map)
+            .bindPopup(
+              `<strong>${site.name}</strong><br>
+               ${temp} °C<br>
+               Kvalitet: ${kval}`
+            );
+        }
+      });
+    }
+
+    // Kör när sidan är redo
+    window.addEventListener('DOMContentLoaded', loadBathingData);
+  </script>
+</body>
+</html>
