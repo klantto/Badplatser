@@ -2,143 +2,62 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <title>Badtemperatur VGR 2025</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Badplatser i Västra Götalandsregionen</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; background: #eef7ff; }
+    body { font-family: sans-serif; padding: 2em; background: #eef9ff; }
     h1 { color: #003366; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
-    th, td { border: 1px solid #ccc; padding: 0.4em; text-align: center; }
-    th { background-color: #cce5ff; }
-    .hot::after { content: " 🔥"; }
-    .cold::after { content: " ❄️"; }
-    label, select { margin-right: 1em; }
-    canvas { margin-top: 2em; }
+    .badplats {
+      background: #fff;
+      margin-bottom: 1em;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
-  <h1>Temperaturer i Västra Götalands badplatser – 2025</h1>
-
-  <p>Uppdateras dagligen med luft- och vattentemperatur för hela regionen.</p>
-
-  <label for="municipalityFilter">Kommun:</label>
-  <select id="municipalityFilter"></select>
-
-  <label for="locationFilter">Badplats:</label>
-  <select id="locationFilter"></select>
-
-  <table id="tempTable">
-    <thead>
-      <tr>
-        <th>Datum</th>
-        <th>Plats</th>
-        <th>Kommun</th>
-        <th>Luft (°C)</th>
-        <th>Vatten (°C)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <canvas id="tempChart" width="800" height="400"></canvas>
+  <h1>Badplatser i Västra Götalandsregionen</h1>
+  <div id="output">Laddar data...</div>
 
   <script>
-    let allData = [];
-    const tbody = document.querySelector("#tempTable tbody");
-    const municipalityFilter = document.getElementById("municipalityFilter");
-    const locationFilter = document.getElementById("locationFilter");
+    async function loadBathingSites() {
+      const proxy = 'https://corsproxy.io/?';
+      const url = proxy + encodeURIComponent('https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=Västra Götalands län');
 
-    async function loadData() {
       try {
-        const res = await fetch("combined_2025.json");
-        if (!res.ok) throw new Error("Fel vid hämtning av temperaturdata");
-        allData = await res.json();
+        const res = await fetch(url);
+        const data = await res.json();
+        const container = document.getElementById('output');
+        container.innerHTML = '';
 
-        const municipalities = [...new Set(allData.map(d => d.municipality))].sort();
-        municipalityFilter.innerHTML = municipalities.map(m => `<option value="${m}">${m}</option>`).join("");
-        municipalityFilter.addEventListener("change", updateLocations);
-        locationFilter.addEventListener("change", updateView);
+        if (!data.bathingWaters || data.bathingWaters.length === 0) {
+          container.textContent = 'Inga badplatser hittades.';
+          return;
+        }
 
-        updateLocations();
+        for (const place of data.bathingWaters) {
+          const name = place.name;
+          const desc = place.description || '';
+          const type = place.waterTypeIdText || '';
+          const municipality = place.municipality?.name || '';
+
+          const div = document.createElement('div');
+          div.className = 'badplats';
+          div.innerHTML = `
+            <h2>${name}</h2>
+            <p><strong>Typ:</strong> ${type}</p>
+            <p><strong>Kommun:</strong> ${municipality}</p>
+            <p>${desc}</p>
+          `;
+          container.appendChild(div);
+        }
       } catch (err) {
-        alert("Kunde inte läsa in temperaturdata.");
-        console.error(err);
+        console.error("Fel vid hämtning av badplatser:", err);
+        document.getElementById('output').textContent = 'Kunde inte hämta data från API.';
       }
     }
 
-    function updateLocations() {
-      const selectedMuni = municipalityFilter.value;
-      const locations = [...new Set(allData.filter(d => d.municipality === selectedMuni).map(d => d.location))].sort();
-      locationFilter.innerHTML = locations.map(loc => `<option value="${loc}">${loc}</option>`).join("");
-      updateView();
-    }
-
-    function updateView() {
-      const muni = municipalityFilter.value;
-      const loc = locationFilter.value;
-      const filtered = allData.filter(d => d.municipality === muni && d.location === loc);
-
-      tbody.innerHTML = "";
-      filtered.forEach(d => {
-        const row = document.createElement("tr");
-        const air = d.air !== null ? d.air.toFixed(1) : "-";
-        const water = d.water !== null ? d.water.toFixed(1) : "-";
-
-        const airClass = d.air !== null ? (d.air > 23 ? "hot" : d.air < 15 ? "cold" : "") : "";
-        const waterClass = d.water !== null ? (d.water > 23 ? "hot" : d.water < 15 ? "cold" : "") : "";
-
-        row.innerHTML = `
-          <td>${d.date}</td>
-          <td>${d.location}</td>
-          <td>${d.municipality}</td>
-          <td class="${airClass}">${air}</td>
-          <td class="${waterClass}">${water}</td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      drawChart(filtered);
-    }
-
-    function drawChart(data) {
-      const ctx = document.getElementById("tempChart").getContext("2d");
-      const labels = data.map(d => d.date);
-      const airTemps = data.map(d => d.air);
-      const waterTemps = data.map(d => d.water);
-
-      if (window.tempChart) window.tempChart.destroy();
-      window.tempChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [
-            {
-              label: "Lufttemperatur (°C)",
-              data: airTemps,
-              borderColor: "red",
-              fill: false
-            },
-            {
-              label: "Vattentemperatur (°C)",
-              data: waterTemps,
-              borderColor: "blue",
-              fill: false
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            title: {
-              display: true,
-              text: `Temperatur per dag – ${locationFilter.value}`
-            }
-          }
-        }
-      });
-    }
-
-    loadData();
+    loadBathingSites();
   </script>
 </body>
 </html>
