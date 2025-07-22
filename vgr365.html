@@ -2,179 +2,53 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <title>Luft- och Vattentemperatur 2025 – VGR</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Badplatser i Västra Götalands län</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; background: #f0f8ff; }
+    body { font-family: sans-serif; padding: 2em; background: #eef8ff; }
     h1 { color: #004080; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1em; }
-    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: center; }
-    th { background-color: #e0f0ff; }
-    canvas { margin-top: 2em; }
-    #monthlyAvgTable { margin-top: 2em; }
-    .hot::after { content: " \1F525"; }
-    .cold::after { content: " \2744"; }
+    .badplats {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      padding: 1em;
+      margin-bottom: 1em;
+    }
   </style>
 </head>
 <body>
-  <h1>Luft- och Vattentemperatur per dag – 2025 (Västra Götaland)</h1>
-  <p>Data uppdateras dagligen via GitHub Actions.</p>
-
-  <label for="municipalityFilter">Välj kommun:</label>
-  <select id="municipalityFilter"></select>
-
-  <label for="locationFilter">Välj badplats:</label>
-  <select id="locationFilter"></select>
-
-  <table id="tempTable">
-    <thead>
-      <tr>
-        <th>Datum</th>
-        <th>Plats</th>
-        <th>Kommun</th>
-        <th>Lufttemp (°C)</th>
-        <th>Vattentemp (°C)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <canvas id="tempChart" width="800" height="400"></canvas>
-
-  <h2>Medeltemperatur per månad</h2>
-  <table id="monthlyAvgTable">
-    <thead>
-      <tr>
-        <th>Månad</th>
-        <th>Medel lufttemp (°C)</th>
-        <th>Medel vattentemp (°C)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <h1>Badplatser i Västra Götalands län</h1>
+  <div id="container">Laddar badplatser...</div>
 
   <script>
-    let allData = [];
-    const tbody = document.querySelector("#tempTable tbody");
-    const locationFilter = document.getElementById("locationFilter");
-    const municipalityFilter = document.getElementById("municipalityFilter");
-    const monthlyAvgBody = document.querySelector("#monthlyAvgTable tbody");
+    const baseUrl = "https://corsproxy.io/?" + encodeURIComponent("https://gw.havochvatten.se/external-public/bathing-waters/v2");
 
-    async function loadTemperaturData() {
-      const res = await fetch('combined_2025.json');
-      const data = await res.json();
-      allData = data;
+    async function fetchBadplatser() {
+      try {
+        const res = await fetch(`${baseUrl}/bathing-waters?countyName=Västra Götalands län`);
+        const data = await res.json();
+        const badplatser = data.bathingWaters;
 
-      const uniqueMunicipalities = [...new Set(data.map(d => d.municipality))].sort();
-      municipalityFilter.innerHTML = uniqueMunicipalities.map(m => `<option value="${m}">${m}</option>`).join("");
+        const container = document.getElementById("container");
+        container.innerHTML = "";
 
-      municipalityFilter.addEventListener("change", updateLocationOptions);
-      locationFilter.addEventListener("change", () => updateView(locationFilter.value));
-
-      updateLocationOptions();
-    }
-
-    function updateLocationOptions() {
-      const selectedMunicipality = municipalityFilter.value;
-      const locations = [...new Set(allData.filter(d => d.municipality === selectedMunicipality).map(d => d.location))].sort();
-      locationFilter.innerHTML = locations.map(loc => `<option value="${loc}">${loc}</option>`).join("");
-      updateView(locations[0]);
-    }
-
-    function updateView(selectedLocation) {
-      tbody.innerHTML = "";
-      const filtered = allData.filter(entry => entry.location === selectedLocation);
-
-      filtered.forEach(entry => {
-        const row = document.createElement("tr");
-        const airTemp = entry.air !== null ? entry.air.toFixed(1) : "-";
-        const waterTemp = entry.water !== null ? entry.water.toFixed(1) : "-";
-
-        const airClass = entry.air !== null ? (entry.air > 23 ? "hot" : entry.air < 15 ? "cold" : "") : "";
-        const waterClass = entry.water !== null ? (entry.water > 23 ? "hot" : entry.water < 15 ? "cold" : "") : "";
-
-        row.innerHTML = `
-          <td>${entry.date}</td>
-          <td>${entry.location}</td>
-          <td>${entry.municipality}</td>
-          <td class="${airClass}">${airTemp}</td>
-          <td class="${waterClass}">${waterTemp}</td>
-        `;
-        tbody.appendChild(row);
-      });
-
-      drawChart(filtered);
-      drawMonthlyAverages(filtered);
-    }
-
-    function drawChart(data) {
-      const ctx = document.getElementById('tempChart').getContext('2d');
-      const labels = data.map(e => e.date);
-      const airTemps = data.map(e => e.air);
-      const waterTemps = data.map(e => e.water);
-
-      if (window.tempChart) window.tempChart.destroy();
-
-      window.tempChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Lufttemperatur',
-              data: airTemps,
-              borderColor: 'rgba(255,99,132,1)',
-              fill: false
-            },
-            {
-              label: 'Vattentemperatur',
-              data: waterTemps,
-              borderColor: 'rgba(54,162,235,1)',
-              fill: false
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'top',
-            },
-            title: {
-              display: true,
-              text: 'Temperatur per dag – 2025'
-            }
-          }
+        for (const b of badplatser) {
+          const div = document.createElement("div");
+          div.className = "badplats";
+          div.innerHTML = `
+            <h2>${b.name}</h2>
+            <p><strong>Kommun:</strong> ${b.municipality.name}</p>
+            <p><strong>Typ:</strong> ${b.waterTypeIdText || "okänd"}</p>
+            <p><strong>Koordinater:</strong> ${b.samplingPointPosition.latitude}, ${b.samplingPointPosition.longitude}</p>
+          `;
+          container.appendChild(div);
         }
-      });
+      } catch (error) {
+        console.error("Fel vid hämtning:", error);
+        document.getElementById("container").textContent = "Kunde inte hämta badplatser.";
+      }
     }
 
-    function drawMonthlyAverages(data) {
-      const months = {};
-
-      data.forEach(entry => {
-        const month = entry.date.slice(0, 7); // YYYY-MM
-        if (!months[month]) months[month] = { air: [], water: [] };
-        if (entry.air !== null) months[month].air.push(entry.air);
-        if (entry.water !== null) months[month].water.push(entry.water);
-      });
-
-      monthlyAvgBody.innerHTML = "";
-      Object.entries(months).forEach(([month, values]) => {
-        const avgAir = values.air.length ? (values.air.reduce((a, b) => a + b) / values.air.length).toFixed(1) : "-";
-        const avgWater = values.water.length ? (values.water.reduce((a, b) => a + b) / values.water.length).toFixed(1) : "-";
-
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${month}</td>
-          <td>${avgAir}</td>
-          <td>${avgWater}</td>
-        `;
-        monthlyAvgBody.appendChild(row);
-      });
-    }
-
-    loadTemperaturData();
+    fetchBadplatser();
   </script>
 </body>
 </html>
