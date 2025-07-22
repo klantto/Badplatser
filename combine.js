@@ -31,7 +31,7 @@ async function getAirTemp(lat, lon) {
 
 async function getWaterTemp(name) {
   try {
-    const url = 'https://corsproxy.io/?' + encodeURIComponent(`https://gw.havochvatten.se/external-public/bathing-waters/v2/forecasts?name=${encodeURIComponent(name)}`);
+    const url = 'https://corsproxy.io/?' + encodeURIComponent(`https://gwtest.havochvatten.se/external-public/bathing-waters/v2/forecasts?name=${encodeURIComponent(name)}`);
     const res = await fetch(url);
     const data = await res.json();
 
@@ -48,7 +48,7 @@ async function getWaterTemp(name) {
 
 async function getLocationsInVGR() {
   try {
-    const url = 'https://corsproxy.io/?' + encodeURIComponent('https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=Västra Götalands län');
+    const url = 'https://corsproxy.io/?' + encodeURIComponent('https://gwtest.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=Västra Götalands län');
     const res = await fetch(url);
     const data = await res.json();
     if (!data.bathingWaters) return [];
