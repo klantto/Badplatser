@@ -45,21 +45,34 @@ async function getWaterTemp(name) {
   }
 }
 
-async function getLocationsInVGR() {
-  try {
-    const res = await fetch('https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=V%C3%A4stra%20G%C3%B6talands%20l%C3%A4n');
-    const data = await res.json();
-    if (!data.bathingWaters) return [];
+async function getLocationsInVGR(retries = 3) {
+  const url = 'https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=V%C3%A4stra%20G%C3%B6talands%20l%C3%A4n';
 
-    return data.bathingWaters.map(bw => ({
-      name: bw.name,
-      municipality: bw.municipality.name,
-      lat: parseFloat(bw.samplingPointPosition.latitude),
-      lon: parseFloat(bw.samplingPointPosition.longitude)
-    }));
-  } catch (err) {
-    console.error('Fel vid hämtning av badplatser i VGR:', err);
-    return [];
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000); // 8 sek timeout
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      const data = await res.json();
+      if (!data.bathingWaters) throw new Error("Svar saknar badplatser");
+      console.log(`✅ Lyckades hämta badplatser i VGR (försök ${attempt})`);
+      return data.bathingWaters.map(bw => ({
+        name: bw.name,
+        municipality: bw.municipality.name,
+        lat: parseFloat(bw.samplingPointPosition.latitude),
+        lon: parseFloat(bw.samplingPointPosition.longitude)
+      }));
+    } catch (err) {
+      console.warn(`⚠️ Försök ${attempt} misslyckades:`, err.message);
+      if (attempt === retries) {
+        console.error('🚫 Alla försök att hämta badplatser i VGR misslyckades.');
+        return [];
+      }
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Vänta 3 sek innan nästa försök
+    }
   }
 }
 
