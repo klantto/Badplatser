@@ -20,7 +20,9 @@
   <div id="container">Laddar badplatser...</div>
 
   <script>
-    const baseUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://gwtest.havochvatten.se/external-test/bathing-waters/v2');
+    // Test-API via gwtest.havochvatten.se
+    const county = encodeURIComponent('Västra Götalands län');
+    const apiUrl = `https://corsproxy.io/?https://gwtest.havochvatten.se/external-test/bathing-waters/v2/bathing-waters?countyName=${county}`;
 
     const utvaldaNamn = [
       'Askimsbadet',
@@ -35,7 +37,7 @@
       container.innerHTML = 'Hämtar badplatser...';
 
       try {
-        const res = await fetch(baseUrl + '/bathing-waters?countyName=Västra Götalands län');
+        const res = await fetch(apiUrl);
         const data = await res.json();
 
         const badplatser = data.bathingWaters
@@ -43,21 +45,7 @@
 
         container.innerHTML = '';
 
-        for (const bw of badplatser) {
-          const profileUrl = baseUrl + `/bathing-waters/${bw.id}/profiles`;
-          let tempText = '<em>Ingen temperaturdata tillgänglig</em>';
-
-          try {
-            const profileRes = await fetch(profileUrl);
-            const profileData = await profileRes.json();
-            const temp = profileData.bathingWater.waterTemp;
-            if (temp !== undefined) {
-              tempText = `${temp} °C`;
-            }
-          } catch (e) {
-            console.warn(`Kunde inte hämta temperatur för ${bw.name}`);
-          }
-
+        badplatser.forEach(bw => {
           const div = document.createElement('div');
           div.className = 'badplats';
           div.innerHTML = `
@@ -65,10 +53,9 @@
             <p><strong>Kommun:</strong> ${bw.municipality.name}</p>
             <p><strong>Koordinater:</strong> ${bw.samplingPointPosition.latitude}, ${bw.samplingPointPosition.longitude}</p>
             <p><strong>Senast ändrad:</strong> ${bw.modified}</p>
-            <p><strong>Vattentemperatur:</strong> ${tempText}</p>
           `;
           container.appendChild(div);
-        }
+        });
 
         if (badplatser.length === 0) {
           container.innerHTML = '<p>Inga badplatser hittades för Göteborgs kommun.</p>';
