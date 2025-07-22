@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>Lista över badplatser &amp; IDn i Göteborg</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 1rem;
+      background: #fff;
+    }
+    h1 {
+      text-align: center;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      padding: 0.3rem 0;
+      border-bottom: 1px solid #ccc;
+    }
+    .error {
+      color: red;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Badplatser i Göteborg (namn &amp; id)</h1>
+  <p id="error" class="error"></p>
+  <ul id="siteList"></ul>
+
+  <script>
+    const apiUrl = 'https://gw.havochvatten.se/external-public/bathing-waters/v2/bathing-waters?countyName=g%C3%B6teborg';
+
+    async function loadSites() {
+      try {
+        const resp = await fetch(apiUrl);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const sites = await resp.json();
+        const ul = document.getElementById('siteList');
+        sites.forEach(site => {
+          const li = document.createElement('li');
+          li.textContent = `ID: ${site.id} — Namn: ${site.name}`;
+          ul.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+        document.getElementById('error').textContent = 'Kunde inte hämta badplatser.';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadSites);
+  </script>
+</body>
+</html>
