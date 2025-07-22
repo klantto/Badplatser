@@ -21,7 +21,7 @@ jobs:
         run: npm install node-fetch
 
       - name: Skapa kombinerad temperaturdata
-        run: node combine.js
+        run: node combine.json
 
       - name: Spara uppdaterad data i repo
         run: |
