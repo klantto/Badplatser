@@ -31,7 +31,7 @@
 
     async function fetchBathingData() {
       try {
-        const response = await fetch("https://gwtest.havochvatten.se/external-public/bathing-waters/v2/bathingwater");
+        const response = await fetch("https://gw.havochvatten.se/external-public/bathing-waters/v2/bathingwater");
         const allBaths = await response.json();
 
         // Filtrera på Göteborgs Stad
