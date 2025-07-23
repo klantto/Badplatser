@@ -1,0 +1,31 @@
+name: Hämta badplatser i Göteborg
+
+on:
+  workflow_dispatch:  # manuell körning från GitHub-gränssnittet
+
+jobs:
+  fetch-and-save:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Klona repot
+        uses: actions/checkout@v3
+
+      - name: Installera Python och beroenden
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Installera requests
+        run: pip install requests
+
+      - name: Kör skript och spara resultat
+        run: |
+          python get_bathingwaters.py
+
+      - name: Lägg till och pusha resultat
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add bathingwaters_gbg.json
+          git commit -m "Uppdaterade badplatser"
+          git push
